@@ -1,0 +1,224 @@
+#!/bin/bash
+
+printf "Ejecutando 'loadkeys'..."
+
+sleep 5
+
+loadkeys la-latin1
+
+printf "Conectando a la red..."
+
+sleep 5
+
+iwctl --passphrase Digna1626 station wlan0 connect "Tenda_78A4D0"
+
+printf "Comprobando coneccion..."
+
+sleep 5
+
+ping -c 5 www.google.com
+
+sleep 5
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "***  PARTICIONADO DE DISCO  ***"
+
+sleep 5
+
+cfdisk /dev/sda
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "***  FORMATEANDO PARTICIONES  ***"
+
+printf "Listando particiones..."
+
+sleep 5
+
+lsblk
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "Particion a formatear como '/boot': "; read boot
+
+sleep 2
+
+printf "Particion a formatear como '/root': "; read root
+
+sleep 2
+
+printf "Particion a formatear como '/home': "; read home
+
+sleep 2
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+mkfs.fat -F 32 $boot
+
+sleep 2
+
+mkfs.ext4 $root
+
+sleep 2
+
+mkfs.ext4 $home
+
+sleep 2
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "*** CREANDO CARPETA 'mnt' ***"
+
+mkdir mnt
+
+printf "Montando particion 'root'..."
+
+sleep 3
+
+mount $root /mnt/
+
+printf "Creando carpetas 'boot y home'..."
+
+mkdir /mnt/boot
+
+mkdir /mnt/home
+
+mount $boot /mnt/boot/
+
+mount $home /mnt/home/
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "Instalando reflector..."
+
+pacman -Sy reflector python3 --noconfirm
+
+sleep 5
+
+printf "Ejecutando reflector..."
+
+sleep 3
+
+reflector --country 'United States' --sort rate --save /etc/pacman.d/mirrorlist
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "Instalando sistema base..."
+
+sleep 5
+
+pacstrap /mnt base base-devel nano dhcpcd netctl iwd net-tools wireless_tools dialog wpa_supplicant zsh networkmanager ifplugd xf86-input-synaptics linux-firmware mkinitcpio linux linux-headers grub efibootmgr os-prober
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "Creando fstab..."
+
+genfstab -p /mnt >> /mnt/etc/fstab
+
+cat /mnt/etc/fstab
+
+sleep 5
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "Entrando a sistema base..."
+
+sleep 5
+
+arch-chroot /mnt
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "EDITADO DE locale.gen..."
+
+sleep 3
+
+nano /etc/locale.gen
+
+locale-gen
+
+echo LANG=es_DO.UTF-8 > /etc/locale.conf
+
+export LANG=es_DO.UTF-8
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ln -sf /usr/share/zoneinfo/America/Santo_Domingo /etc/localtime
+
+hwclock -w
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "*** NOMBRE DE HOST ***"
+
+printf "Introduce el nombre de host: "; read hostname
+
+echo $hostname > /etc/hostname
+
+echo 127.0.1.1 $hostname.localdomain $hostname > /etc/hosts
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "*** Establecer contraseña de root ***"
+
+sleep 3
+
+passwd root
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "*** Creando nuevo usuario ***"
+
+printf "Nombre de usuario: "; read user
+
+useradd -m -g users -s /bin/zsh $user
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "*** Establecer contraseña de $user ***"
+
+passwd $user
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "*** Editar sudoers ***"
+
+sleep 3
+
+nano /etc/sudoers
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pacman -S reflector
+
+reflector --country 'United States' --sort rate --save /etc/pacman.d/mirrorlist
+
+systemctl enable NetworkManager
+
+mkinitcpio
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+printf "INSTALACION DE GRUB"
+
+printf "ID para gestor de arranque: "; read id
+
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=$id
+
+grub-install --target=x86_64-efi --efi-directory=/boot --removable
+
+grub-mkconfig -o /boot/grub/grub.cfg
+
+umount -R /mnt
+
+reboot
+
+
+
+
+
+
+
+
+
